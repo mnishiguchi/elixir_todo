@@ -1,9 +1,11 @@
 defmodule Todo.Server do
+  use GenServer
+
   @moduledoc """
-  A stateful server process that wraps Todo.List within.
+  A stateful server process built with the GenServer behaviour, which wraps Todo.List within.
 
   USAGE:
-    pid = Todo.Server.start
+    {:ok, pid} = Todo.Server.start
     Todo.Server.add_entry(pid, %{date: {2017, 2, 22}, title: "Study elixir"})
     Todo.Server.add_entry(pid, %{date: {2017, 2, 23}, title: "Study ruby"})
     Todo.Server.all_entries(pid)
@@ -15,74 +17,50 @@ defmodule Todo.Server do
   # INTERFACE FUNCTIONS
   #---
 
+  # Returns {:ok, pid} or {:stop, reason}
   def start do
-    initial_state = Todo.List.new
-
-    spawn(fn() ->
-      loop(initial_state)
-    end)
-  end
-
-  def add_entry(server_pid, new_entry) do
-    send(server_pid, { :add_entry, new_entry })
-  end
-
-  def find_by_date(server_pid, date) do
-    send(server_pid, { :find_by_date, self, date })
-
-    receive do
-      {:entries, entries} -> entries
-      after 5000          -> {:error, :timeout}
-    end
+    GenServer.start(Todo.Server,     # Callback module atom
+                    Todo.List.new)   # Initial params
   end
 
   def all_entries(server_pid) do
-    send(server_pid, { :all_entries, self })
+    GenServer.call(server_pid, { :all_entries })
+  end
 
-    receive do
-      {:entries, entries} -> entries
-      after 5000          -> {:error, :timeout}
-    end
+  def find_by_date(server_pid, date) do
+    GenServer.call(server_pid, { :find_by_date, date })
+  end
+
+  def add_entry(server_pid, new_entry) do
+    GenServer.cast(server_pid, { :add_entry, new_entry })
   end
 
   def update_entry(server_pid, todo_id, updater_fun) do
-    send(server_pid, {:update_entry, self, todo_id, updater_fun})
-
-    receive do
-      {:entries, entries} -> entries
-      after 5000          -> {:error, :timeout}
-    end
+    GenServer.cast(server_pid, { :update_entry, todo_id, updater_fun })
   end
 
   #---
-  # IMPLEMENTATION FUNCTIONS
+  # GEN SERVER CALLBACKS
   #---
 
-  defp loop(todo_list) do
-
-    new_todo_list = receive do
-      # NOTE: Ensure that process_message function returns a new todo list.
-      message -> process_message(todo_list, message)
-    end
-
-    loop(new_todo_list)
+  # The first argument provides initial data to GenServer.start/2's second argument.
+  def init(initial_state) do
+    { :ok, initial_state }
   end
 
-  defp process_message(todo_list, { :add_entry, new_entry }) do
-    Todo.List.add_entry(todo_list, new_entry)
+  def handle_call({ :all_entries }, _for_internal_use, state) do
+    { :reply, Todo.List.all_entries(state), state }
   end
 
-  defp process_message(todo_list, { :find_by_date, caller, date }) do
-    send(caller, { :entries, Todo.List.find_by_date(todo_list, date) })
-    todo_list  # State remains unchanged.
+  def handle_call({ :find_by_date, date }, _for_internal_use, state) do
+    { :reply, Todo.List.find_by_date(state, date), state }
   end
 
-  defp process_message(todo_list, { :update_entry, caller, todo_id, updater_fun }) do
-    send(caller, { :entries, Todo.List.update_entry(todo_list, todo_id, updater_fun) })
+  def handle_cast({ :add_entry, new_entry }, state) do
+    { :noreply, Todo.List.add_entry(state, new_entry) }
   end
 
-  defp process_message(todo_list, { :all_entries, caller }) do
-    send(caller, { :entries, Todo.List.all_entries(todo_list) })
-    todo_list  # State remains unchanged.
+  def handle_cast({ :update_entry, todo_id, updater_fun }, state) do
+    { :noreply, Todo.List.update_entry(state, todo_id, updater_fun)}
   end
 end
