@@ -3,7 +3,9 @@ defmodule Todo.Server do
 
   @moduledoc """
   A stateful server process built with the GenServer behaviour, which wraps Todo.List within.
+  """
 
+  @docp """
   USAGE:
     {:ok, pid} = Todo.Server.start
     Todo.Server.add_entry(pid, %{date: {2017, 2, 22}, title: "Study elixir"})
@@ -19,8 +21,7 @@ defmodule Todo.Server do
 
   # Returns {:ok, pid} or {:stop, reason}
   def start do
-    GenServer.start(Todo.Server,     # Callback module atom
-                    Todo.List.new)   # Initial params
+    GenServer.start(__MODULE__, nil )  # Callback module atom is the current module
   end
 
   def all_entries(server_pid) do
@@ -44,23 +45,27 @@ defmodule Todo.Server do
   #---
 
   # The first argument provides initial data to GenServer.start/2's second argument.
-  def init(initial_state) do
-    { :ok, initial_state }
+  def init(_initial_state) do
+    { :ok, Todo.List.new }  # Determine the initial state.
   end
 
-  def handle_call({ :all_entries }, _for_internal_use, state) do
-    { :reply, Todo.List.all_entries(state), state }
+  def handle_call({ :all_entries }, _from, state) do
+    entries = Todo.List.all_entries(state)
+    { :reply, entries, state }
   end
 
-  def handle_call({ :find_by_date, date }, _for_internal_use, state) do
-    { :reply, Todo.List.find_by_date(state, date), state }
+  def handle_call({ :find_by_date, date }, _from, state) do
+    entries = Todo.List.find_by_date(state, date)
+    { :reply, entries, state }
   end
 
   def handle_cast({ :add_entry, new_entry }, state) do
-    { :noreply, Todo.List.add_entry(state, new_entry) }
+    new_state = Todo.List.add_entry(state, new_entry)
+    { :noreply, new_state }
   end
 
   def handle_cast({ :update_entry, todo_id, updater_fun }, state) do
-    { :noreply, Todo.List.update_entry(state, todo_id, updater_fun)}
+    new_state = Todo.List.update_entry(state, todo_id, updater_fun)
+    { :noreply, new_state }
   end
 end
