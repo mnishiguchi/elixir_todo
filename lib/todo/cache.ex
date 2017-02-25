@@ -2,27 +2,30 @@ defmodule Todo.Cache do
   use GenServer
 
   @moduledoc """
-  A singleton key-value store of Todo.List servers.
+  A singleton key-value store of Todo.Servers.
   Associates a server name with a server pid.
   Exports two functions: start/0 and server_process/2.
-  """
 
-  @docp """
-  USAGE:
-    {:ok, cache} = Todo.Cache.start
+  ## STARTING A TODO.CACHE SERVER PROCESS
 
-    masas_list      = Todo.Cache.server_process(cache, "masa")
-    christines_list = Todo.Cache.server_process(cache, "christine")
+      {:ok, cache} = Todo.Cache.start
 
-    Todo.Server.add_entry(masas_list, %{date: {2017, 2, 22}, title: "Study elixir"})
-    Todo.Server.add_entry(masas_list, %{date: {2017, 2, 23}, title: "Study ruby"})
-    Todo.Server.all_entries(masas_list)
-    Todo.Server.update_entry(masas_list, 1, fn(old_entry) -> %{ old_entry | title: "Say hello!" }  end)
-    Todo.Server.find_by_date(masas_list, {2017, 2, 22})
+  ## STARTING OR FETCHING A TODO.SERVER PROCESS
 
-    Todo.Server.add_entry(christines_list, %{date: {2017, 2, 22}, title: "Sing a song"})
-    Todo.Server.add_entry(christines_list, %{date: {2017, 2, 23}, title: "Go to church"})
-    Todo.Server.all_entries(christines_list)
+      masas_pid      = Todo.Cache.server_process(cache, "masa")
+      christines_pid = Todo.Cache.server_process(cache, "christine")
+
+  ## USING THE TODO FUNCTIONALITY
+
+      Todo.Server.add_entry(masas_pid, %{date: {2017, 2, 22}, title: "Study elixir"})
+      Todo.Server.add_entry(masas_pid, %{date: {2017, 2, 23}, title: "Study ruby"})
+      Todo.Server.all_entries(masas_pid)
+      Todo.Server.update_entry(masas_pid, 1, fn(old_entry) -> %{ old_entry | title: "Say hello!" } end)
+      Todo.Server.find_by_date(masas_pid, {2017, 2, 22})
+
+      Todo.Server.add_entry(christines_pid, %{date: {2017, 2, 22}, title: "Sing a song"})
+      Todo.Server.add_entry(christines_pid, %{date: {2017, 2, 23}, title: "Go to church"})
+      Todo.Server.all_entries(christines_pid)
   """
 
   #---
@@ -34,8 +37,8 @@ defmodule Todo.Cache do
     GenServer.start(__MODULE__, nil)
   end
 
-  def server_process(cache_pid, todo_list_name) do
-    GenServer.call(cache_pid, { :server_process, todo_list_name })
+  def server_process(cache_pid, todo_server_uuid) do
+    GenServer.call(cache_pid, { :server_process, todo_server_uuid })
   end
 
   #---
@@ -43,21 +46,18 @@ defmodule Todo.Cache do
   #---
 
   def init(_initial_state) do
-    { :ok, %{} } # Initial state is an empty map.
+    Todo.Database.start("./persist")
+    { :ok, %{} }  # Determine the initial state.
   end
 
-  def handle_call({ :server_process, todo_list_name }, _from, todo_servers) do
-    case Map.fetch(todo_servers, todo_list_name) do
+  def handle_call({ :server_process, todo_server_uuid }, _from, todo_servers) do
+    case Map.fetch(todo_servers, todo_server_uuid) do
       { :ok, todo_server } ->
-          # todo_server exists, reply with its pid.
-          { :reply, todo_server, todo_servers }
+          { :reply, todo_server, todo_servers }  # todo_server exists, reply with its pid.
       :error ->
-          # Start a new server process.
-          { :ok, new_server }  = Todo.Server.start
-          # Add that server to the state.
-          new_state = Map.put(todo_servers, todo_list_name, new_server)
-          # Reply with a server pid.
-          { :reply, new_server, new_state }
+          { :ok, new_server }  = Todo.Server.start(todo_server_uuid)      # Start a new server process.
+          new_state = Map.put(todo_servers, todo_server_uuid, new_server) # Add that server to the state.
+          { :reply, new_server, new_state }                               # Reply with a server pid.
     end
   end
 end

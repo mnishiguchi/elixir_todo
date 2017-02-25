@@ -3,16 +3,25 @@ defmodule Todo.Server do
 
   @moduledoc """
   A stateful server process built with the GenServer behaviour, which wraps Todo.List within.
-  """
+  Persists the todo list relying on Todo.Database.
 
-  @docp """
-  USAGE:
-    {:ok, pid} = Todo.Server.start
-    Todo.Server.add_entry(pid, %{date: {2017, 2, 22}, title: "Study elixir"})
-    Todo.Server.add_entry(pid, %{date: {2017, 2, 23}, title: "Study ruby"})
-    Todo.Server.all_entries(pid)
-    Todo.Server.update_entry(pid, 1, fn(old_entry) -> %{ old_entry | title: "Say hello!" }  end)
-    Todo.Server.find_by_date(pid, {2017, 2, 22})
+  ## STARTING A TODO.SERVER STANDALONE
+
+      {:ok, pid} = Todo.Server.start("Masa's list")
+
+  ## STARTING A TODO.SERVER THROUGH TODO.CACHE (RECOMMENDED)
+
+      {:ok, cache}   = Todo.Cache.start
+      masas_pid      = Todo.Cache.server_process(cache, "Masa's list")
+      christines_pid = Todo.Cache.server_process(cache, "Christine's list")
+
+  ## USING THE TODO FUNCTIONALITY
+
+      Todo.Server.add_entry(pid, %{date: {2017, 2, 22}, title: "Study elixir"})
+      Todo.Server.add_entry(pid, %{date: {2017, 2, 23}, title: "Study ruby"})
+      Todo.Server.all_entries(pid)
+      Todo.Server.update_entry(pid, 1, fn(old_entry) -> %{ old_entry | title: "Say hello!" }  end)
+      Todo.Server.find_by_date(pid, {2017, 2, 22})
   """
 
   #---
@@ -20,8 +29,9 @@ defmodule Todo.Server do
   #---
 
   # Returns {:ok, pid} or {:stop, reason}
-  def start do
-    GenServer.start(__MODULE__, nil )  # Callback module atom is the current module
+  def start(uuid) do
+    GenServer.start(__MODULE__,  # Will be replaced with the current module during the compilation.
+                    uuid)        # For persisting and fetching a Todo.Server instance from Todo.Database.
   end
 
   def all_entries(server_pid) do
@@ -45,27 +55,37 @@ defmodule Todo.Server do
   #---
 
   # The first argument provides initial data to GenServer.start/2's second argument.
-  def init(_initial_state) do
-    { :ok, Todo.List.new }  # Determine the initial state.
+  def init(uuid) do
+    # NOTE: GenServe.start returns only after the process is initialized here, which
+    # causes the creater's process to be blocked.
+    todo_list = Todo.Database.get(uuid) || Todo.List.new
+
+    { :ok, { uuid, todo_list } }  # Determine the initial state.
   end
 
-  def handle_call({ :all_entries }, _from, state) do
-    entries = Todo.List.all_entries(state)
+  def handle_call({ :all_entries }, _from, { _uuid, todo_list } = state) do
+    entries = Todo.List.all_entries(todo_list)
+
     { :reply, entries, state }
   end
 
-  def handle_call({ :find_by_date, date }, _from, state) do
-    entries = Todo.List.find_by_date(state, date)
+  def handle_call({ :find_by_date, date }, _from, { _uuid, todo_list } = state) do
+    entries = Todo.List.find_by_date(todo_list, date)
+
     { :reply, entries, state }
   end
 
-  def handle_cast({ :add_entry, new_entry }, state) do
-    new_state = Todo.List.add_entry(state, new_entry)
-    { :noreply, new_state }
+  def handle_cast({ :add_entry, new_entry }, { uuid, todo_list }) do
+    new_list = Todo.List.add_entry(todo_list, new_entry)
+    Todo.Database.persist(uuid, new_list)
+
+    { :noreply, { uuid, new_list } }
   end
 
-  def handle_cast({ :update_entry, todo_id, updater_fun }, state) do
-    new_state = Todo.List.update_entry(state, todo_id, updater_fun)
-    { :noreply, new_state }
+  def handle_cast({ :update_entry, todo_id, updater_fun }, { uuid, todo_list }) do
+    new_list = Todo.List.update_entry(todo_list, todo_id, updater_fun)
+    Todo.Database.persist(uuid, new_list)
+
+    { :noreply, { uuid, new_list } }
   end
 end

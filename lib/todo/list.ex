@@ -3,12 +3,11 @@ defmodule Todo.List do
 
   @moduledoc """
   An abstraction that represents a todo list.
-  """
 
-  @docp """
-  DATA STRUCTURE:
-    todo_list - %Todo.List{ entries: entries, auto_id: auto_id }
-    entry     - %{ date: date, title: title }
+  ## DATA STRUCTURE
+
+      todo_list = %Todo.List{ entries: %{}, auto_id: 1 }
+      entry     = %{date: {2017, 2, 22}, title: "Study elixir"}
   """
 
   @doc """
