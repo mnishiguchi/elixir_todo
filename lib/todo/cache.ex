@@ -2,8 +2,9 @@ defmodule Todo.Cache do
   use GenServer
 
   @moduledoc """
-  A singleton key-value store of Todo.Servers.
-  Associates a server name with a server pid.
+  A singleton key-value store of todo-list name to server pid, which
+  provides a Todo.Server based on the given todo-list name.
+
   Exports two functions: start/0 and server_process/2.
 
                 issue a request for
@@ -44,7 +45,7 @@ defmodule Todo.Cache do
   end
 
   def server_process(cache_pid, todo_server_uuid) do
-    GenServer.call(cache_pid, { :server_process, todo_server_uuid })
+    GenServer.call cache_pid, {:server_process, todo_server_uuid}
   end
 
   #---
@@ -53,17 +54,17 @@ defmodule Todo.Cache do
 
   def init(_initial_state) do
     Todo.Database.start("./persist")
-    { :ok, %{} }  # Determine the initial state.
+    {:ok, %{}}  # Determine the initial state.
   end
 
-  def handle_call({ :server_process, todo_server_uuid }, _from, todo_servers) do
+  def handle_call {:server_process, todo_server_uuid}, _from, todo_servers do
     case Map.fetch(todo_servers, todo_server_uuid) do
-      { :ok, todo_server } ->
-          { :reply, todo_server, todo_servers }  # todo_server exists, reply with its pid.
+      {:ok, todo_server} ->
+          {:reply, todo_server, todo_servers}  # todo_server exists, reply with its pid.
       :error ->
-          { :ok, new_server }  = Todo.Server.start(todo_server_uuid)      # Start a new server process.
+          {:ok, new_server}  = Todo.Server.start(todo_server_uuid)        # Start a new server process.
           new_state = Map.put(todo_servers, todo_server_uuid, new_server) # Add that server to the state.
-          { :reply, new_server, new_state }                               # Reply with a server pid.
+          {:reply, new_server, new_state}                                 # Reply with a server pid.
     end
   end
 end

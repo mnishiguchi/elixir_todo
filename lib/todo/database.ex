@@ -2,7 +2,10 @@ defmodule Todo.Database do
   use GenServer
 
   @moduledoc """
-  Persists Todo.List to the local file system.
+  Deals with database-related requests.
+  Distributes the work over a limited pool of worker processes.
+  Ensures that a single list is always handled by the same worker,
+  which eliminates race conditions and keeps consistency.
   """
 
   #---
@@ -10,81 +13,70 @@ defmodule Todo.Database do
   #---
 
   def start(db_folder) do
-    GenServer.start(__MODULE__,              # Will be replaced with the current module during the compilation.
-                    db_folder,               # Folder location will be kept as the process state.
-                    name: :database_server)  # Locally register the process under an alias so that we do not need pass the pid around.
+    GenServer.start __MODULE__,             # Will be replaced with the current module during the compilation.
+                    db_folder,              # Folder location will be kept as the process state.
+                    name: :database_server  # Locally register the process under an alias so that we do not need pass the pid around.
   end
 
+  @doc """
+  Persist e given key data pair to the database.
+  """
   def persist(key, data) do
-    GenServer.cast(:database_server, { :persist, key, data })
+    # Obtain the worker’s pid and forward to interface functions of DatabaseWorker.
+    worker_pid = get_worker(key)
+    GenServer.cast worker_pid, {:persist, key, data}
   end
 
+  @doc """
+  Return data for a given key.
+  """
   def get(key) do
-    GenServer.call(:database_server, { :get, key })
+    # Obtain the worker’s pid and forward to interface functions of DatabaseWorker.
+    worker_pid = get_worker(key)
+    GenServer.call worker_pid, {:get, key}
   end
 
   #---
   # GEN SERVER CALLBACKS
   #---
 
+  @doc """
+  Start three workers and store their pids in a Map of 0-based index => pid.
+  """
   def init(db_folder) do
-    File.mkdir_p(db_folder) # Ensure that the folder exists.
+    worker_pool = Enum.reduce 0..2, %{}, fn(index, acc) ->
+                    case Todo.DatabaseWorker.start(db_folder) do
+                      {:ok, pid} ->
+                        Map.put(acc, index, pid)
+                      _error ->
+                        raise "Error starting a Todo.DatabaseWorker process"
+                    end
+                  end
 
-    { :ok, db_folder }      # Determine the initial state.
+    {:ok, worker_pool}  # Determine the initial state.
   end
 
   @doc """
-  Store the data to the db_folder
+  Respond with a worker id for a given key.
   """
-  def handle_cast({ :persist, key, data }, db_folder) do
-    # Handle file writing in a spawned process.
-    spawn(fn() ->
-      file_name(db_folder, key)
-      |> File.write!(:erlang.term_to_binary(data))
-    end)
+  def handle_call {:worker_pid, key}, _caller, worker_pool do
+    worker_pid = worker_pool[ hash_function(key) ]
 
-    { :noreply, db_folder }
+    {:reply, worker_pid, worker_pool}
   end
 
-  # def handle_cast({ :persist, key, data }, db_folder) do
-  #   file_name(db_folder, key)
-  #   |> File.write!(:erlang.term_to_binary(data))
-  #
-  #   { :noreply, db_folder }
-  # end
+  #---
+  # PRIVATE FUNCTIONS
+  #---
 
-  @doc """
-  Read the data from the db_folder
-  """
-  def handle_call({ :get, key }, caller, db_folder) do
-    # Handle file reading in a spawned process.
-    spawn(fn() ->
-      data =  case File.read(file_name(db_folder, key)) do
-                { :ok, binary } -> :erlang.binary_to_term(binary)
-                _error          -> nil
-              end
-
-      # Respond from inside of the spawned process.
-      GenServer.reply(caller, data)
-    end)
-
-    # No need to reply from database.
-    { :noreply, db_folder }
+  # Return a worker's pid for a given key.
+  # Always return the same worker for the same key.
+  defp get_worker(key) do
+    GenServer.call :database_server, {:worker_pid, key}
   end
 
-  # def handle_call({ :get, key }, _from, db_folder) do
-  #   data =  case File.read(file_name(db_folder, key)) do
-  #             { :ok, binary } -> :erlang.binary_to_term(binary)
-  #             _error          -> nil
-  #           end
-  #
-  #   { :reply, data, db_folder }
-  # end
-
-  @docp """
-  Build a file name string for the key.
-  """
-  defp file_name(db_folder, key) do
-    "#{db_folder}/#{key}"
+  # Compute the key’s numerical hash for the range of 0..2 (3 buckets).
+  defp hash_function(key) do
+    :erlang.phash2(key, 3)
   end
 end

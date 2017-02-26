@@ -4,6 +4,7 @@ defmodule Todo.Server do
   @moduledoc """
   A stateful server process built with the GenServer behaviour, which wraps Todo.List within.
   Persists the todo list relying on Todo.Database.
+  Different Todo.Lists are handled by different Todo.Servers so that the systen can be efficient.
 
   ## STARTING A TODO.SERVER STANDALONE
 
@@ -67,13 +68,6 @@ defmodule Todo.Server do
     { :ok, nil }  # We do not initialize state here.
   end
 
-  def handle_cast({ :real_init, uuid }, _state) do
-    todo_list     = Todo.Database.get(uuid) || Todo.List.new
-    initial_state = { uuid, todo_list }
-
-    { :noreply, initial_state }
-  end
-
   def handle_call({ :all_entries }, _from, { _uuid, todo_list } = state) do
     entries = Todo.List.all_entries(todo_list)
 
@@ -98,6 +92,13 @@ defmodule Todo.Server do
     Todo.Database.persist(uuid, new_list)
 
     { :noreply, { uuid, new_list } }
+  end
+
+  def handle_cast({ :real_init, uuid }, _state) do
+    todo_list     = Todo.Database.get(uuid) || Todo.List.new
+    initial_state = { uuid, todo_list }
+
+    { :noreply, initial_state }
   end
 
   #---
