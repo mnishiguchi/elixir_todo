@@ -6,6 +6,12 @@ defmodule Todo.Cache do
   Associates a server name with a server pid.
   Exports two functions: start/0 and server_process/2.
 
+                issue a request for
+                 a server pid        ________________  handles one at a time
+      Client_1 -------------------> |                | (creating / fetching a Todo.Server process)
+      Client_2 -------------------> |   Todo.Cache   | ---------> Todo.Server
+      Client_3 -------------------> |________________|
+
   ## STARTING A TODO.CACHE SERVER PROCESS
 
       {:ok, cache} = Todo.Cache.start

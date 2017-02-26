@@ -54,13 +54,24 @@ defmodule Todo.Server do
   # GEN SERVER CALLBACKS
   #---
 
-  # The first argument provides initial data to GenServer.start/2's second argument.
   def init(uuid) do
     # NOTE: GenServe.start returns only after the process is initialized here, which
-    # causes the creater's process to be blocked.
-    todo_list = Todo.Database.get(uuid) || Todo.List.new
+    # causes the creater's process to be blocked. So make sure that operations here are quick enough.
+    # We can handle the iniitlization asynchronously by sending a request to self as long as our
+    # process is not registered under a local alias.
+    # If the process is registered, we need to use some special techniques so that
+    # we ensure that we are the first one who send a request.
+    # Discussed in Elixir in Action Capter 7.3.2.
+    schedule_real_init(uuid)
 
-    { :ok, { uuid, todo_list } }  # Determine the initial state.
+    { :ok, nil }  # We do not initialize state here.
+  end
+
+  def handle_cast({ :real_init, uuid }, _state) do
+    todo_list     = Todo.Database.get(uuid) || Todo.List.new
+    initial_state = { uuid, todo_list }
+
+    { :noreply, initial_state }
   end
 
   def handle_call({ :all_entries }, _from, { _uuid, todo_list } = state) do
@@ -87,5 +98,13 @@ defmodule Todo.Server do
     Todo.Database.persist(uuid, new_list)
 
     { :noreply, { uuid, new_list } }
+  end
+
+  #---
+  # PRIVATE FUNCTIONS
+  #---
+
+  defp schedule_real_init(uuid) do
+    GenServer.cast(self, { :real_init, uuid })
   end
 end
