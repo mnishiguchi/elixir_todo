@@ -2,9 +2,9 @@ defmodule Todo.Server do
   use GenServer
 
   @moduledoc """
-  A stateful server process built with the GenServer behaviour, which wraps Todo.List within.
-  Persists the todo list relying on Todo.Database.
-  Different Todo.Lists are handled by different Todo.Servers so that the systen can be efficient.
+  A stateful server process, which holds a single instance of Todo.List abstraction.
+  Persists Todo.Lists, relying on Todo.Database.
+  Different Todo.Lists are handled by different Todo.Servers so that the system can be efficient.
 
   ## STARTING A TODO.SERVER STANDALONE
 

@@ -2,8 +2,7 @@ defmodule Todo.Database do
   use GenServer
 
   @moduledoc """
-  Deals with database-related requests.
-  Distributes the work over a limited pool of worker processes.
+  Maintains a pool of Todo.DatabaseWorkers and forwards database requests to them.
   Ensures that a single list is always handled by the same worker,
   which eliminates race conditions and keeps consistency.
   """

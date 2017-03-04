@@ -2,6 +2,9 @@ defmodule Todo.Cache do
   use GenServer
 
   @moduledoc """
+  Maintains a collection of Todo.Server instances.
+  Responsible for the creation and retrieval of a Todo.Server instance.
+
   A singleton key-value store of todo-list name to server pid, which
   provides a Todo.Server based on the given todo-list name.
 
@@ -15,7 +18,7 @@ defmodule Todo.Cache do
 
   ## STARTING A TODO.CACHE SERVER PROCESS
 
-      {:ok, cache} = Todo.Cache.start
+      {:ok, cache} = Todo.Cache.start_link
 
   ## STARTING OR FETCHING A TODO.SERVER PROCESS
 
@@ -39,13 +42,18 @@ defmodule Todo.Cache do
   # INTERFACE FUNCTIONS
   #---
 
-  def start do
+  def start_link do
+    IO.puts "Staring Todo.Cache"
+
     # During the compilation, __MODULE__ is replaced with the current module.
-    GenServer.start(__MODULE__, nil)
+    GenServer.start_link __MODULE__,
+                         nil,
+                         name: :todo_cache  # Register a single process under an alias
+                                            # and link it to the caller process.
   end
 
-  def server_process(cache_pid, todo_server_uuid) do
-    GenServer.call cache_pid, {:server_process, todo_server_uuid}
+  def server_process(todo_server_uuid) do
+    GenServer.call :todo_cache, {:server_process, todo_server_uuid}
   end
 
   #---

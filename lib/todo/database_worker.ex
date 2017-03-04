@@ -2,7 +2,7 @@ defmodule Todo.DatabaseWorker do
   use GenServer
 
   @moduledoc """
-  Handles database operations that are forwarded from Todo.Database.
+  Performs read/write operations on the file system.
   """
 
   #---
