@@ -27,8 +27,8 @@ defmodule Todo.Cache do
 
   ## USING THE TODO FUNCTIONALITY
 
-      Todo.Server.add_entry(masas_pid, %{date: {2017, 2, 22}, title: "Study elixir"})
-      Todo.Server.add_entry(masas_pid, %{date: {2017, 2, 23}, title: "Study ruby"})
+      Todo.Server.add_entry(masas_pid, Todo.List.Entry.for_today("Study elixir"))
+      Todo.Server.add_entry(masas_pid, Todo.List.Entry.for_date({2017, 2, 23}, "Study ruby"))
       Todo.Server.all_entries(masas_pid)
       Todo.Server.update_entry(masas_pid, 1, fn(old_entry) -> %{ old_entry | title: "Say hello!" } end)
       Todo.Server.find_by_date(masas_pid, {2017, 2, 22})

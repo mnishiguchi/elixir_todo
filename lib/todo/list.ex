@@ -3,12 +3,34 @@ defmodule Todo.List do
 
   @moduledoc """
   An abstraction that represents a todo list.
-
-  ## DATA STRUCTURE
-
-      todo_list = %Todo.List{ entries: %{}, auto_id: 1 }
-      entry     = %{date: {2017, 2, 22}, title: "Study elixir"}
   """
+
+  defmodule Entry do
+    @moduledoc """
+    ## EXAMPLES:
+
+        Todo.List.Entry.for_today "Say hello"
+        # %{date: {2017, 3, 5}, title: "Say hello"}
+
+        Todo.List.Entry.for_date {2017, 4, 1}, "Make sushi"
+        # %{date: {2017, 4, 1}, title: "Make sushi"}
+    """
+
+    @doc """
+    Create a new todo-entry for today.
+    """
+    def for_today(title) do
+      {date, _time} = :calendar.local_time()
+      %{title: title, date: date}
+    end
+
+    @doc """
+    Create a new todo-entry for a given date.
+    """
+    def for_date(date, title) do
+      %{title: title, date: date}
+    end
+  end
 
   @doc """
   Create a new Todo.List instance with no entry.
@@ -29,9 +51,7 @@ defmodule Todo.List do
   @doc """
   Add an entry to an existing Todo.List instance.
   """
-  def add_entry %Todo.List{ entries: entries, auto_id: auto_id } = todo_list,
-                %{ date: _date, title: _title } = entry
-  do
+  def add_entry %Todo.List{ entries: entries, auto_id: auto_id } = todo_list, %{} = entry do
     entry       = Map.put(entry, :id, auto_id)      # Set the new id.
     new_entries = Map.put(entries, auto_id, entry)  # Add the new entry to the list.
 
@@ -42,9 +62,7 @@ defmodule Todo.List do
   @doc """
   Returns a list of entries that match with the specified date.
   """
-  def find_by_date %Todo.List{ entries: entries },
-                   date
-  do
+  def find_by_date %Todo.List{ entries: entries }, date do
     entries
     |> Stream.filter(
          fn {_, entry} -> entry[:date] == date end) # Filter entries for specified date.
