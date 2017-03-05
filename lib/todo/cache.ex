@@ -61,7 +61,7 @@ defmodule Todo.Cache do
   #---
 
   def init(_initial_state) do
-    Todo.Database.start("./persist")
+    Todo.Database.start_link("./persist")
     {:ok, %{}}  # Determine the initial state.
   end
 
@@ -70,7 +70,7 @@ defmodule Todo.Cache do
       {:ok, todo_server} ->
           {:reply, todo_server, todo_servers}  # todo_server exists, reply with its pid.
       :error ->
-          {:ok, new_server}  = Todo.Server.start(todo_server_uuid)        # Start a new server process.
+          {:ok, new_server}  = Todo.Server.start_link(todo_server_uuid)   # Start a new server process.
           new_state = Map.put(todo_servers, todo_server_uuid, new_server) # Add that server to the state.
           {:reply, new_server, new_state}                                 # Reply with a server pid.
     end

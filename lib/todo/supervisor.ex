@@ -46,6 +46,11 @@ defmodule Todo.Supervisor do
       #   2 => %{date: {2017, 2, 23}, id: 2, title: "Study ruby"},
       #   3 => %{date: {2017, 2, 22}, id: 3, title: "Study elixir"},
 
+      ## Check the number of processes
+
+      length :erlang.processes
+      # 56
+
       ## Terminate one of the child processes of the supervision tree
 
       Process.whereis(:todo_cache)
@@ -69,6 +74,11 @@ defmodule Todo.Supervisor do
       # %{1 => %{date: {2017, 2, 22}, id: 1, title: "Say hello!"},
       #   2 => %{date: {2017, 2, 23}, id: 2, title: "Study ruby"},
       #   3 => %{date: {2017, 2, 22}, id: 3, title: "Study elixir"},
+
+      ## Check the number of processes
+
+      length :erlang.processes
+      # 56
   """
 
   @doc """

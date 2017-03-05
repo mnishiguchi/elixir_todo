@@ -30,11 +30,11 @@ defmodule Todo.Server do
   #---
 
   # Returns {:ok, pid} or {:stop, reason}
-  def start(uuid) do
+  def start_link(uuid) do
     IO.puts "Staring #{__MODULE__}"
 
-    GenServer.start __MODULE__,  # Will be replaced with the current module during the compilation.
-                    uuid         # For persisting and fetching a Todo.Server instance from Todo.Database.
+    GenServer.start_link __MODULE__,  # Will be replaced with the current module during the compilation.
+                    uuid              # For persisting and fetching a Todo.Server instance from Todo.Database.
   end
 
   def all_entries(server_pid) do

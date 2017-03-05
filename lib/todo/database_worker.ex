@@ -12,11 +12,11 @@ defmodule Todo.DatabaseWorker do
   @doc """
   Starts a DatabaseWorker server process with the specified initial state.
   """
-  def start(db_folder) do
+  def start_link(db_folder) do
     IO.puts "Staring #{__MODULE__}"
-    
+
     # We do not register the process under an alias because we want to run multiple instances.
-    GenServer.start(__MODULE__, db_folder)
+    GenServer.start_link(__MODULE__, db_folder)
   end
 
   #---

@@ -11,10 +11,10 @@ defmodule Todo.Database do
   # INTERFACE FUNCTIONS
   #---
 
-  def start(db_folder) do
+  def start_link(db_folder) do
     IO.puts "Staring #{__MODULE__}"
-    
-    GenServer.start __MODULE__,             # Will be replaced with the current module during the compilation.
+
+    GenServer.start_link __MODULE__,        # Will be replaced with the current module during the compilation.
                     db_folder,              # Folder location will be kept as the process state.
                     name: :database_server  # Locally register the process under an alias so that we do not need pass the pid around.
   end
@@ -46,7 +46,7 @@ defmodule Todo.Database do
   """
   def init(db_folder) do
     worker_pool = Enum.reduce 0..2, %{}, fn(index, acc) ->
-                    case Todo.DatabaseWorker.start(db_folder) do
+                    case Todo.DatabaseWorker.start_link(db_folder) do
                       {:ok, pid} ->
                         Map.put(acc, index, pid)
                       _error ->
