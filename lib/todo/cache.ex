@@ -61,7 +61,6 @@ defmodule Todo.Cache do
   #---
 
   def init(_initial_state) do
-    Todo.Database.start_link("./persist")
     {:ok, %{}}  # Determine the initial state.
   end
 

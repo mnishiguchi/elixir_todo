@@ -51,15 +51,26 @@ defmodule Todo.Supervisor do
       length :erlang.processes
       # 56
 
-      ## Terminate one of the child processes of the supervision tree
+      ## Terminate a child process in the supervision tree
 
       Process.whereis(:todo_cache)
       # #PID<0.120.0>
 
       Process.whereis(:todo_cache) |> Process.exit(:kill)
       # Staring Elixir.Todo.Cache
+      # true
+
+      ## Terminate a child process in the supervision tree
+
+      Process.whereis(:database_server)
+      # #PID<0.120.0>
+
+      Process.whereis(:database_server) |> Process.exit(:kill)
       # Staring Elixir.Todo.Database
       # true
+      # Staring Elixir.Todo.DatabaseWorker
+      # Staring Elixir.Todo.DatabaseWorker
+      # Staring Elixir.Todo.DatabaseWorker
 
       Process.whereis(:todo_cache)
       # #PID<0.132.0>
@@ -95,11 +106,14 @@ defmodule Todo.Supervisor do
   Returns a supervisor specification that will be used by the supervisor process.
   """
   def init(_) do
+    db_folder = "./persist"
+
     # Supervisor.Spec.worker/2
     #  - imported when `use Supervisor` is invoked
     #  - returns the description of the worker as a tuple
     child_processes = [
-      worker(Todo.Cache, [])  # This worker will be started by calling Todo.Cache.start_link with [].
+      worker(Todo.Cache,    []),           # Will be started by calling Todo.Cache.start_link with [].
+      worker(Todo.Database, [db_folder]),  # Will be started by calling Todo.Database.start_link with [db_folder].
     ]
 
     # Must return a supervisor specification.
