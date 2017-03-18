@@ -27,69 +27,44 @@ defmodule Todo.Supervisor do
       ## Start the supervisor process
 
       Todo.Supervisor.start_link
-      # Staring Elixir.Todo.Supervisor
-      # Staring Elixir.Todo.Cache
-      # Staring Elixir.Todo.Database
-      # Staring Elixir.Todo.DatabaseWorker
-      # Staring Elixir.Todo.DatabaseWorker
-      # Staring Elixir.Todo.DatabaseWorker
-      # {:ok, #PID<0.119.0>}
 
       ## Do some operations
 
       pid = Todo.Cache.server_process("masa")
-      # Staring Elixir.Todo.Server
-      # #PID<0.126.0>
-
       pid |> Todo.Server.all_entries
-      # %{1 => %{date: {2017, 2, 22}, id: 1, title: "Say hello!"},
-      #   2 => %{date: {2017, 2, 23}, id: 2, title: "Study ruby"},
-      #   3 => %{date: {2017, 2, 22}, id: 3, title: "Study elixir"},
 
       ## Check the number of processes
 
       length :erlang.processes
-      # 56
 
       ## Terminate a child process in the supervision tree
 
       Process.whereis(:todo_cache)
-      # #PID<0.120.0>
-
       Process.whereis(:todo_cache) |> Process.exit(:kill)
-      # Staring Elixir.Todo.Cache
-      # true
 
       ## Terminate a child process in the supervision tree
 
       Process.whereis(:database_server)
-      # #PID<0.120.0>
-
       Process.whereis(:database_server) |> Process.exit(:kill)
-      # Staring Elixir.Todo.Database
-      # true
-      # Staring Elixir.Todo.DatabaseWorker
-      # Staring Elixir.Todo.DatabaseWorker
-      # Staring Elixir.Todo.DatabaseWorker
 
       Process.whereis(:todo_cache)
-      # #PID<0.132.0>
 
       ## Continue to do some operations
 
       pid = Todo.Cache.server_process("masa")
-      # Staring Elixir.Todo.Server
-      # #PID<0.135.0>
-
       pid |> Todo.Server.all_entries
-      # %{1 => %{date: {2017, 2, 22}, id: 1, title: "Say hello!"},
-      #   2 => %{date: {2017, 2, 23}, id: 2, title: "Study ruby"},
-      #   3 => %{date: {2017, 2, 22}, id: 3, title: "Study elixir"},
 
       ## Check the number of processes
 
       length :erlang.processes
-      # 56
+
+      ## Kill Todo.Cache to see if it is restarted
+
+      Process.whereis(:todo_cache) |> Process.exit(:kill)
+
+      ## Kill Todo.Database to see if it is restarted
+
+      Process.whereis(:database_server) |> Process.exit(:kill)
   """
 
   @doc """
@@ -112,8 +87,8 @@ defmodule Todo.Supervisor do
     #  - imported when `use Supervisor` is invoked
     #  - returns the description of the worker as a tuple
     child_processes = [
-      worker(Todo.Cache,    []),           # Will be started by calling Todo.Cache.start_link with [].
       worker(Todo.Database, [db_folder]),  # Will be started by calling Todo.Database.start_link with [db_folder].
+      worker(Todo.Cache,    []),           # Will be started by calling Todo.Cache.start_link with [].
     ]
 
     # Must return a supervisor specification.
