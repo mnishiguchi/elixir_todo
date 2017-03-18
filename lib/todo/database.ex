@@ -14,27 +14,29 @@ defmodule Todo.Database do
   def start_link(db_folder) do
     IO.puts "Staring #{__MODULE__}"
 
-    GenServer.start_link __MODULE__,        # Will be replaced with the current module during the compilation.
-                    db_folder,              # Folder location will be kept as the process state.
-                    name: :database_server  # Locally register the process under an alias so that we do not need pass the pid around.
+    GenServer.start_link __MODULE__,             # Will be replaced with the current module during the compilation.
+                         db_folder,              # Folder location will be kept as the process state.
+                         name: :database_server  # Locally register the process under an alias so that we do not need pass the pid around.
   end
 
   @doc """
   Persist e given key data pair to the database.
+  Delegate the operation to DatabaseWorker.
   """
   def persist(key, data) do
-    # Obtain the worker’s pid and forward to interface functions of DatabaseWorker.
-    worker_pid = get_worker(key)
-    GenServer.cast worker_pid, {:persist, key, data}
+    key
+    |> get_worker
+    |> Todo.DatabaseWorker.persist(key, data)
   end
 
   @doc """
   Return data for a given key.
+  Delegate the operation to DatabaseWorker.
   """
   def get(key) do
-    # Obtain the worker’s pid and forward to interface functions of DatabaseWorker.
-    worker_pid = get_worker(key)
-    GenServer.call worker_pid, {:get, key}
+    key
+    |> get_worker
+    |> Todo.DatabaseWorker.get(key)
   end
 
   #---
@@ -45,25 +47,34 @@ defmodule Todo.Database do
   Start three workers and store their pids in a Map of 0-based index => pid.
   """
   def init(db_folder) do
-    worker_pool = Enum.reduce 0..2, %{}, fn(index, acc) ->
-                    case Todo.DatabaseWorker.start_link(db_folder) do
-                      {:ok, pid} ->
-                        Map.put(acc, index, pid)
-                      _error ->
-                        raise "Error starting a Todo.DatabaseWorker process"
-                    end
-                  end
-
+    worker_pool = start_workers(db_folder)
     {:ok, worker_pool}  # Determine the initial state.
+  end
+
+  # Returns a map of index to pid.
+  defp start_workers(db_folder) do
+    for index <- 0..2, into: %{} do
+      {:ok, pid} = Todo.DatabaseWorker.start_link(db_folder)
+
+      {index, pid}
+    end
+    |> IO.inspect
+
+    # Enum.reduce 0..2, %{}, fn(index, acc) ->
+    #   {:ok, pid} = Todo.DatabaseWorker.start_link(db_folder) do
+    #
+    #   {index, pid}
+    # end
   end
 
   @doc """
   Respond with a worker id for a given key.
   """
-  def handle_call {:worker_pid, key}, _caller, worker_pool do
-    worker_pid = worker_pool[ hash_function(key) ]
+  def handle_call {:get_worker, key}, _caller, workers do
+    worker_key = hash_function(key)
+    worker_pid = workers[ worker_key ]
 
-    {:reply, worker_pid, worker_pool}
+    {:reply, worker_pid, workers}
   end
 
   #---
@@ -73,7 +84,7 @@ defmodule Todo.Database do
   # Return a worker's pid for a given key.
   # Always return the same worker for the same key.
   defp get_worker(key) do
-    GenServer.call :database_server, {:worker_pid, key}
+    GenServer.call :database_server, {:get_worker, key}
   end
 
   # Compute the key’s numerical hash for the range of 0..2 (3 buckets).

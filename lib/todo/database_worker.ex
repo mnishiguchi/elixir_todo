@@ -19,6 +19,20 @@ defmodule Todo.DatabaseWorker do
     GenServer.start_link(__MODULE__, db_folder)
   end
 
+  @doc """
+  Persist e given key data pair to the database.
+  """
+  def persist(worker_pid, key, data) do
+    GenServer.cast(worker_pid, {:persist, key, data})
+  end
+
+  @doc """
+  Return data for a given key.
+  """
+  def get(worker_pid, key) do
+    GenServer.call(worker_pid, {:get, key})
+  end
+
   #---
   # GEN SERVER CALLBACKS
   #---
@@ -33,11 +47,8 @@ defmodule Todo.DatabaseWorker do
   Persist the data to the db_folder
   """
   def handle_cast {:persist, key, data}, db_folder do
-    # Handle file writing in a spawned process.
-    spawn(fn() ->
-      file_name(db_folder, key)
-      |> File.write!(:erlang.term_to_binary(data))
-    end)
+    file_name(db_folder, key)
+    |> File.write!(:erlang.term_to_binary(data))
 
     {:noreply, db_folder}
   end
