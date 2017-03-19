@@ -30,11 +30,11 @@ defmodule Todo.Server do
   #---
 
   # Returns {:ok, pid} or {:stop, reason}
-  def start_link(uuid) do
-    IO.puts "Staring #{__MODULE__}"
+  def start_link(todo_list_name) do
+    IO.puts "Staring #{__MODULE__} #{todo_list_name}"
 
-    GenServer.start_link __MODULE__,  # Will be replaced with the current module during the compilation.
-                    uuid              # For persisting and fetching a Todo.Server instance from Todo.Database.
+    GenServer.start_link __MODULE__,     # Will be replaced with the current module during the compilation.
+                         todo_list_name  # For persisting and fetching a Todo.Server instance from Todo.Database.
   end
 
   def all_entries(server_pid) do
@@ -53,11 +53,15 @@ defmodule Todo.Server do
     GenServer.cast server_pid, {:update_entry, todo_id, updater_fun}
   end
 
+  def delete_entry(server_pid, todo_id) do
+    GenServer.cast server_pid, {:delete_entry, todo_id}
+  end
+
   #---
   # GEN SERVER CALLBACKS
   #---
 
-  def init(uuid) do
+  def init(todo_list_name) do
     # NOTE: GenServe.start returns only after the process is initialized here, which
     # causes the creater's process to be blocked. So make sure that operations here are quick enough.
     # We can handle the iniitlization asynchronously by sending a request to self as long as our
@@ -65,40 +69,47 @@ defmodule Todo.Server do
     # If the process is registered, we need to use some special techniques so that
     # we ensure that we are the first one who send a request.
     # Discussed in Elixir in Action Capter 7.3.2.
-    schedule_real_init(uuid)
+    schedule_real_init(todo_list_name)
 
     {:ok, nil}  # We do not initialize state here.
   end
 
-  def handle_call {:all_entries}, _from, {_uuid, todo_list} = state do
+  def handle_call {:all_entries}, _from, {_todo_list_name, todo_list} = state do
     entries = Todo.List.all_entries(todo_list)
 
     {:reply, entries, state}
   end
 
-  def handle_call {:find_by_date, date}, _from, {_uuid, todo_list} = state do
+  def handle_call {:find_by_date, date}, _from, {_todo_list_name, todo_list} = state do
     entries = Todo.List.find_by_date(todo_list, date)
 
     {:reply, entries, state}
   end
 
-  def handle_cast {:add_entry, new_entry}, {uuid, todo_list} do
+  def handle_cast {:add_entry, new_entry}, {todo_list_name, todo_list} do
     new_list = Todo.List.add_entry(todo_list, new_entry)
-    Todo.Database.persist(uuid, new_list)
+    Todo.Database.persist(todo_list_name, new_list)
 
-    {:noreply, {uuid, new_list}}
+    {:noreply, {todo_list_name, new_list}}
   end
 
-  def handle_cast {:update_entry, todo_id, updater_fun}, {uuid, todo_list} do
+  def handle_cast {:update_entry, todo_id, updater_fun}, {todo_list_name, todo_list} do
     new_list = Todo.List.update_entry(todo_list, todo_id, updater_fun)
-    Todo.Database.persist(uuid, new_list)
+    Todo.Database.persist(todo_list_name, new_list)
 
-    {:noreply, {uuid, new_list}}
+    {:noreply, {todo_list_name, new_list}}
   end
 
-  def handle_cast {:real_init, uuid}, _state do
-    todo_list     = Todo.Database.get(uuid) || Todo.List.new
-    initial_state = {uuid, todo_list}
+  def handle_cast {:delete_entry, todo_id}, {todo_list_name, todo_list} do
+    new_list = Todo.List.delete_entry(todo_list, todo_id)
+    Todo.Database.persist(todo_list_name, new_list)
+
+    {:noreply, {todo_list_name, new_list}}
+  end
+
+  def handle_cast {:real_init, todo_list_name}, _state do
+    todo_list     = Todo.Database.get(todo_list_name) || Todo.List.new
+    initial_state = {todo_list_name, todo_list}
 
     {:noreply, initial_state}
   end
@@ -107,7 +118,7 @@ defmodule Todo.Server do
   # PRIVATE FUNCTIONS
   #---
 
-  defp schedule_real_init(uuid) do
-    GenServer.cast self, {:real_init, uuid}
+  defp schedule_real_init(todo_list_name) do
+    GenServer.cast self, {:real_init, todo_list_name}
   end
 end

@@ -20,7 +20,6 @@ defmodule Todo.ProcessRegistry do
   - If a process is started from a supervisor, we don't have access to the pid of the worker process.
   - We can't keep a process's pid for a long time, because that process might be restarted and its successor will have a different pid.
   - Elixir aliases can only be atoms; thus we need to maintain a key-value map, where the keys are aliases and the values are pids.
-
   """
 
   #---

@@ -5,38 +5,6 @@ defmodule Todo.List do
   An abstraction that represents a todo list.
   """
 
-  defmodule Entry do
-    @moduledoc """
-    ## EXAMPLES:
-
-        Todo.List.Entry.for_today "Say hello"
-        # %{date: {2017, 3, 5}, title: "Say hello"}
-
-        Todo.List.Entry.for_date {2017, 4, 1}, "Make sushi"
-        # %{date: {2017, 4, 1}, title: "Make sushi"}
-    """
-
-    @doc """
-    Create a new todo-entry for today.
-    """
-    def for_today(title) do
-      {date, _time} = :calendar.local_time()
-      %{title: title, date: date}
-    end
-
-    @doc """
-    Create a new todo-entry for a given date.
-    """
-    def for_date(date, title) do
-      %{title: title, date: date}
-    end
-  end
-
-  @doc """
-  Create a new Todo.List instance with no entry.
-  """
-  def new, do: %Todo.List{}
-
   @doc """
   Create a new Todo.List instance with multiple entries.
   """
@@ -99,6 +67,43 @@ defmodule Todo.List do
         new_entry = %{} = updater_fun.(old_entry)  # Ensure that updater_fun returns a map.
         new_entries = Map.put(entries, new_entry.id, new_entry)
         %Todo.List{ todo_list | entries: new_entries }
+    end
+  end
+
+  def delete_entry %Todo.List{entries: entries} = todo_list,
+                   entry_id
+  do
+    %Todo.List{todo_list | entries: Map.delete(entries, entry_id)}
+  end
+
+  # ---
+  # Submodules
+  # ---
+
+  defmodule Entry do
+    @moduledoc """
+    ## EXAMPLES:
+
+        Todo.List.Entry.for_today "Say hello"
+        # %{date: {2017, 3, 5}, title: "Say hello"}
+
+        Todo.List.Entry.for_date {2017, 4, 1}, "Make sushi"
+        # %{date: {2017, 4, 1}, title: "Make sushi"}
+    """
+
+    @doc """
+    Create a new todo-entry for today.
+    """
+    def for_today(title) do
+      {date, _time} = :calendar.local_time()
+      %{title: title, date: date}
+    end
+
+    @doc """
+    Create a new todo-entry for a given date.
+    """
+    def for_date(date, title) do
+      %{title: title, date: date}
     end
   end
 end

@@ -52,8 +52,8 @@ defmodule Todo.Cache do
                                             # and link it to the caller process.
   end
 
-  def server_process(todo_server_uuid) do
-    GenServer.call :todo_cache, {:server_process, todo_server_uuid}
+  def server_process(todo_list_name) do
+    GenServer.call :todo_cache, {:server_process, todo_list_name}
   end
 
   #---
@@ -64,14 +64,23 @@ defmodule Todo.Cache do
     {:ok, %{}}  # Determine the initial state.
   end
 
-  def handle_call {:server_process, todo_server_uuid}, _from, todo_servers do
-    case Map.fetch(todo_servers, todo_server_uuid) do
+  def handle_call {:server_process, todo_list_name}, _from, todo_servers do
+    case Map.fetch(todo_servers, todo_list_name) do
       {:ok, todo_server} ->
-          {:reply, todo_server, todo_servers}  # todo_server exists, reply with its pid.
+        {
+          :reply,
+          todo_server, # todo_server exists, reply with that pid.
+          todo_servers
+        }
+
       :error ->
-          {:ok, new_server}  = Todo.Server.start_link(todo_server_uuid)   # Start a new server process.
-          new_state = Map.put(todo_servers, todo_server_uuid, new_server) # Add that server to the state.
-          {:reply, new_server, new_state}                                 # Reply with a server pid.
+        {:ok, new_server}    = Todo.Server.start_link(todo_list_name)            # Start a new server process.
+        updated_todo_servers = Map.put(todo_servers, todo_list_name, new_server) # Add that server to the state.
+        {
+          :reply,
+          new_server,
+          updated_todo_servers
+        }
     end
   end
 end

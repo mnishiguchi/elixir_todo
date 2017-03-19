@@ -2,7 +2,7 @@ defmodule Todo.DatabaseWorker do
   use GenServer
 
   @moduledoc """
-  Performs read/write operations on the file system.
+  Performs read/write operations on the file system, which are forwarded from a `Todo.Database` process.
   """
 
   #---
@@ -12,25 +12,35 @@ defmodule Todo.DatabaseWorker do
   @doc """
   Starts a DatabaseWorker server process with the specified initial state.
   """
-  def start_link(db_folder) do
-    IO.puts "Staring #{__MODULE__}"
+  def start_link(db_folder, worker_id) do
+    IO.puts "Staring #{__MODULE__} #{worker_id}"
 
-    # We do not register the process under an alias because we want to run multiple instances.
-    GenServer.start_link(__MODULE__, db_folder)
+    GenServer.start_link __MODULE__,
+                         db_folder,
+                         name: via_tuple(worker_id)
   end
 
   @doc """
   Persist e given key data pair to the database.
   """
-  def persist(worker_pid, key, data) do
-    GenServer.cast(worker_pid, {:persist, key, data})
+  def persist(worker_id, key, data) do
+    GenServer.cast via_tuple(worker_id), {:persist, key, data}
   end
 
   @doc """
   Return data for a given key.
   """
-  def get(worker_pid, key) do
-    GenServer.call(worker_pid, {:get, key})
+  def get(worker_id, key) do
+    GenServer.call via_tuple(worker_id), {:get, key}
+  end
+
+  # Create a proper via-tuple for a given worker id.
+  defp via_tuple(worker_id) do
+    {
+      :via,
+      Todo.ProcessRegistry,          # A registry module
+      {:database_worker, worker_id}  # A complex alias
+    }
   end
 
   #---
@@ -57,23 +67,18 @@ defmodule Todo.DatabaseWorker do
   Read the data from the db_folder
   """
   def handle_call {:get, key}, caller, db_folder do
-    # Handle file reading in a spawned process.
-    spawn(fn() ->
-      data =  case File.read(file_name(db_folder, key)) do
-                {:ok, binary} -> :erlang.binary_to_term(binary)
-                _error        -> nil
-              end
+    data =  case File.read(file_name(db_folder, key)) do
+              {:ok, binary} ->
+                :erlang.binary_to_term(binary)
+              _else ->
+                nil
+            end
 
-      # Respond from inside of the spawned process.
-      GenServer.reply(caller, data)
-    end)
-
-    # No need to reply from database.
-    {:noreply, db_folder}
+    {:reply, data, db_folder}
   end
 
   #---
-  # PRIVATE FUNCTIONS
+  # Utilities
   #---
 
   # Build a file name string for the key.
