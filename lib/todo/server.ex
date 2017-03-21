@@ -33,8 +33,23 @@ defmodule Todo.Server do
   def start_link(todo_list_name) do
     IO.puts "Staring #{__MODULE__} #{todo_list_name}"
 
-    GenServer.start_link __MODULE__,     # Will be replaced with the current module during the compilation.
-                         todo_list_name  # For persisting and fetching a Todo.Server instance from Todo.Database.
+    GenServer.start_link __MODULE__,
+                         todo_list_name,                  # For persisting and fetching a Todo.Server instance from Todo.Database.
+                         name: via_tuple(todo_list_name)  # Register in a process registry
+  end
+
+  # Create a proper via-tuple for dynamically registering a todo-server.
+  defp via_tuple(todo_list_name) do
+    {
+      :via,
+      Todo.ProcessRegistry,            # A registry module
+      {:todo_server, todo_list_name}   # A complex alias
+    }
+  end
+
+  # Get a pid for a given todo-list-name.
+  def whereis(todo_list_name) do
+    Todo.ProcessRegistry.whereis_name {:todo_server, todo_list_name}
   end
 
   def all_entries(server_pid) do

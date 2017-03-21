@@ -34,7 +34,7 @@ defmodule Todo.DatabaseWorker do
     GenServer.call via_tuple(worker_id), {:get, key}
   end
 
-  # Create a proper via-tuple for a given worker id.
+  # Create a proper via-tuple for dynamically registering a todo-database-worker.
   defp via_tuple(worker_id) do
     {
       :via,
@@ -66,7 +66,7 @@ defmodule Todo.DatabaseWorker do
   @doc """
   Read the data from the db_folder
   """
-  def handle_call {:get, key}, caller, db_folder do
+  def handle_call {:get, key}, _caller, db_folder do
     data =  case File.read(file_name(db_folder, key)) do
               {:ok, binary} ->
                 :erlang.binary_to_term(binary)

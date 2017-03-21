@@ -1,24 +1,68 @@
 # ElixirTodo
 
-**TODO: Add description**
+## Supervision tree
 
-## Installation
+```elixir
+Todo.Supervisor (one_for_one) # The top-level supervisor.
+  ├── Todo.ProcessRegistry # Dynamically register processes.
+  ├── Todo.PoolSupervisor (one_for_one) # Start all the children from here.
+  │     ├── Todo.DatabaseWorker 1
+  │     ├── Todo.DatabaseWorker 2
+  │     ├── Todo.DatabaseWorker n
+  │     :
+  ├── Todo.ServerSupervisor (simple_one_for_one) # Start no child from here.
+  │     ├── Todo.Server 1 # Dynamically started on demand from a caller.
+  │     ├── Todo.Server 2 # Dynamically started on demand from a caller.
+  │     ├── Todo.Server n # Dynamically started on demand from a caller.
+  │     :
+  └── Todo.Cache # The interface for Todo.Server instances.
+```
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed as:
+---
 
-  1. Add `elixir_todo` to your list of dependencies in `mix.exs`:
+## Usage
 
-    ```elixir
-    def deps do
-      [{:elixir_todo, "~> 0.1.0"}]
-    end
-    ```
+```elixir
+## Start the top-level supervisor process
 
-  2. Ensure `elixir_todo` is started before your application:
+Todo.Supervisor.start_link
 
-    ```elixir
-    def application do
-      [applications: [:elixir_todo]]
-    end
-    ```
+## Do some operations
 
+pid = Todo.Cache.server_process("masa")
+pid |> Todo.Server.all_entries
+
+## Check the number of processes
+
+length :erlang.processes
+
+## Terminate a child process in the supervision tree to see if it restarts correctly
+
+Process.whereis(:todo_cache)
+Process.whereis(:todo_cache) |> Process.exit(:kill)
+
+Process.whereis(:process_registry)
+Process.whereis(:process_registry) |> Process.exit(:kill)
+
+## Terminate an individual worker to see if it restarts correctly
+
+Todo.ProcessRegistry.whereis_name({:database_worker, 2})
+Todo.ProcessRegistry.whereis_name({:database_worker, 2}) |> Process.exit(:kill)
+
+## Continue to do some operations
+
+pid = Todo.Cache.server_process("masa")
+pid |> Todo.Server.all_entries
+
+## Check the number of processes
+
+length :erlang.processes
+
+## Kill Todo.Cache to see if it restarts correctly
+
+Process.whereis(:todo_cache) |> Process.exit(:kill)
+
+## Kill Todo.Database to see if it restarts correctly
+
+Process.whereis(:database_server) |> Process.exit(:kill)
+```

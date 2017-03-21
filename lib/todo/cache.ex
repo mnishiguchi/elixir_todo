@@ -48,12 +48,19 @@ defmodule Todo.Cache do
     # During the compilation, __MODULE__ is replaced with the current module.
     GenServer.start_link __MODULE__,
                          nil,
-                         name: :todo_cache  # Register a single process under an alias
-                                            # and link it to the caller process.
+                         name: :todo_cache  # local registration
   end
 
+  @doc """
+  Returns the pid of a todo-server process.
+  """
   def server_process(todo_list_name) do
-    GenServer.call :todo_cache, {:server_process, todo_list_name}
+    # Issue a query for a Todo.Server process.
+    case Todo.Server.whereis(todo_list_name) do
+      :undefined ->
+        GenServer.call :todo_cache, {:server_process, todo_list_name}
+      pid -> pid
+    end
   end
 
   #---
@@ -61,26 +68,13 @@ defmodule Todo.Cache do
   #---
 
   def init(_initial_state) do
-    {:ok, %{}}  # Determine the initial state.
+    {:ok, nil}  # Determine the initial state.
   end
 
   def handle_call {:server_process, todo_list_name}, _from, todo_servers do
-    case Map.fetch(todo_servers, todo_list_name) do
-      {:ok, todo_server} ->
-        {
-          :reply,
-          todo_server, # todo_server exists, reply with that pid.
-          todo_servers
-        }
+    # Dynamically start a process for the specified todo-list name.
+    {:ok, pid} = Todo.ServerSupervisor.start_child(todo_list_name)
 
-      :error ->
-        {:ok, new_server}    = Todo.Server.start_link(todo_list_name)            # Start a new server process.
-        updated_todo_servers = Map.put(todo_servers, todo_list_name, new_server) # Add that server to the state.
-        {
-          :reply,
-          new_server,
-          updated_todo_servers
-        }
-    end
+    {:reply, pid, todo_servers}
   end
 end
