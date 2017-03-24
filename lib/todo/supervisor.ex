@@ -2,7 +2,8 @@ defmodule Todo.Supervisor do
   use Supervisor
 
   @moduledoc """
-  The top-level supervisor that responsible for starting the entire system.
+  The top-level supervisor that starts and supervises the process registry and
+  the rest of the to-do system. When the registry crashes, the rest of the system will terminate as well.
 
   ## STARTING A SUPERVISOR PROCESS
 
@@ -18,11 +19,6 @@ defmodule Todo.Supervisor do
       1. The init/1 callback is invoked, which provides a supervisor specification to the supervisor process.
       2. The supervior behaviour starts the corresponding child processes.
       3. If a child process crash, the supervisor is notified and performs the specified restart strategy.
-
-  ## INTERACTING WITH CHILD PROCESSES
-
-  When we invoke Supervisor.start or Supervisor.start_link, it returns {:ok, supervisor_pid}; we do not know the pids of child processes.
-  Thus, if we want to interact with a child process, we must register it under an alias.
   """
 
   @doc """
@@ -39,16 +35,13 @@ defmodule Todo.Supervisor do
   Returns a supervisor specification that will be used by the supervisor process.
   """
   def init(_) do
-    db_folder = "./persist"
-
     # the descriptions of the child processes as a list of tuples
     children =  [
                   worker(Todo.ProcessRegistry, []),
-                  supervisor(Todo.Database, [db_folder]),  # Specify that Todo.Database is a supervisor.
-                  supervisor(Todo.ServerSupervisor, []),
-                  worker(Todo.Cache, []),
+                  supervisor(Todo.SystemSupervisor, []),
                 ] |> IO.inspect
 
-    supervise(children, strategy: :one_for_one)
+    # We use a :rest_for_one strategy, ensuring that a crash of the process registry takes down the entire system.
+    supervise(children, strategy: :rest_for_one)
   end
 end

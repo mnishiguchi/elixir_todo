@@ -3,19 +3,20 @@
 ## Supervision tree
 
 ```elixir
-Todo.Supervisor (one_for_one) # The top-level supervisor.
-  ├── Todo.ProcessRegistry # Dynamically register processes.
-  ├── Todo.PoolSupervisor (one_for_one) # Start all the children from here.
-  │     ├── Todo.DatabaseWorker 1
-  │     ├── Todo.DatabaseWorker 2
-  │     ├── Todo.DatabaseWorker n
-  │     :
-  ├── Todo.ServerSupervisor (simple_one_for_one) # Start no child from here.
-  │     ├── Todo.Server 1 # Dynamically started on demand from a caller.
-  │     ├── Todo.Server 2 # Dynamically started on demand from a caller.
-  │     ├── Todo.Server n # Dynamically started on demand from a caller.
-  │     :
-  └── Todo.Cache # The interface for Todo.Server instances.
+Todo.Supervisor (rest_for_one) # The top-level supervisor.
+  ├── Todo.ProcessRegistry              # Dynamically register processes.
+  └── Todo.SystemRegistry (one_for_one) # The todo system.
+        ├── Todo.PoolSupervisor (one_for_one) # Start all the children from here.
+        │     ├── Todo.DatabaseWorker 1
+        │     ├── Todo.DatabaseWorker 2
+        │     ├── Todo.DatabaseWorker n
+        │     :
+        ├── Todo.ServerSupervisor (simple_one_for_one) # Start no child from here.
+        │     ├── Todo.Server 1 # Dynamically started on demand from a caller.
+        │     ├── Todo.Server 2 # Dynamically started on demand from a caller.
+        │     ├── Todo.Server n # Dynamically started on demand from a caller.
+        │     :
+        └── Todo.Cache # The interface for Todo.Server instances.
 ```
 
 ---
