@@ -1,22 +1,27 @@
 # ElixirTodo
 
+This is a simple OTP application, with which I practice Elixir programming along with the book "Elixir in Action" by Sasa Juric.
+
+---
+
 ## Supervision tree
 
 ```elixir
-Todo.Supervisor (rest_for_one) # The top-level supervisor.
-  ├── Todo.ProcessRegistry              # Dynamically register processes.
-  └── Todo.SystemRegistry (one_for_one) # The todo system.
-        ├── Todo.PoolSupervisor (one_for_one) # Start all the children from here.
-        │     ├── Todo.DatabaseWorker 1
-        │     ├── Todo.DatabaseWorker 2
-        │     ├── Todo.DatabaseWorker n
-        │     :
-        ├── Todo.ServerSupervisor (simple_one_for_one) # Start no child from here.
-        │     ├── Todo.Server 1 # Dynamically started on demand from a caller.
-        │     ├── Todo.Server 2 # Dynamically started on demand from a caller.
-        │     ├── Todo.Server n # Dynamically started on demand from a caller.
-        │     :
-        └── Todo.Cache # The interface for Todo.Server instances.
+Todo.Application
+  └── Todo.Supervisor (rest_for_one) # The top-level supervisor.
+        ├── Todo.ProcessRegistry              # Dynamically register processes.
+        └── Todo.SystemRegistry (one_for_one) # The todo system.
+              ├── Todo.PoolSupervisor (one_for_one) # Start all the children from here.
+              │     ├── Todo.DatabaseWorker 1
+              │     ├── Todo.DatabaseWorker 2
+              │     ├── Todo.DatabaseWorker n
+              │     :
+              ├── Todo.ServerSupervisor (simple_one_for_one) # Start no child from here.
+              │     ├── Todo.Server 1 # Dynamically started on demand from a caller.
+              │     ├── Todo.Server 2 # Dynamically started on demand from a caller.
+              │     ├── Todo.Server n # Dynamically started on demand from a caller.
+              │     :
+              └── Todo.Cache # The interface for Todo.Server instances.
 ```
 
 ---
@@ -24,10 +29,20 @@ Todo.Supervisor (rest_for_one) # The top-level supervisor.
 ## Usage
 
 ```elixir
-## Start the top-level supervisor process
+# The app is automatically started.
+$ iex -S mix
 
-Todo.Supervisor.start_link
+# Only one instance per application is allowed.
+iex(1)> Application.start(:hello_world)
+{:error, {:already_started, :hello_world}}
+iex(2)> Application.stop(:hello_world)
+:ok
+17:04:42.874 [info]  Application hello_world exited: :stopped
+iex(3)> Application.start(:hello_world)
+:ok
+```
 
+```elixir
 ## Do some operations
 
 pid = Todo.Cache.server_process("masa")

@@ -14,7 +14,11 @@ defmodule ElixirTodo.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [applications: [:logger]]
+    # Application module and runtime dependencies
+    [
+      applications: [:logger],
+      mod: {Todo.Application, []}
+    ]
   end
 
   # Dependencies can be Hex packages:
@@ -27,6 +31,10 @@ defmodule ElixirTodo.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    []
+    # Compile-time dependencies
+    [
+      # A mocking library for Erlang http://eproxus.github.com/meck
+      {:meck, "0.8.4", only: :test}
+    ]
   end
 end
