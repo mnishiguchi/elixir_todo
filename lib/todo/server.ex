@@ -42,14 +42,14 @@ defmodule Todo.Server do
   defp via_tuple(todo_list_name) do
     {
       :via,
-      Todo.ProcessRegistry,            # A registry module
-      {:todo_server, todo_list_name}   # A complex alias
+      :gproc,
+      {:n, :l, {:todo_server, todo_list_name}} # A complex alias
     }
   end
 
   # Get a pid for a given todo-list-name.
   def whereis(todo_list_name) do
-    Todo.ProcessRegistry.whereis_name {:todo_server, todo_list_name}
+    :gproc.whereis_name {:n, :l, {:todo_server, todo_list_name}}
   end
 
   def all_entries(server_pid) do

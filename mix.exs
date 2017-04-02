@@ -16,7 +16,10 @@ defmodule ElixirTodo.Mixfile do
   def application do
     # Application module and runtime dependencies
     [
-      applications: [:logger],
+      applications: [
+        :logger,
+        :gproc
+      ],
       mod: {Todo.Application, []}
     ]
   end
@@ -33,6 +36,8 @@ defmodule ElixirTodo.Mixfile do
   defp deps do
     # Compile-time dependencies
     [
+      # Extended process registry for Erlang https://github.com/uwiger/gproc
+      {:gproc, "~> 0.5.0"},
       # A mocking library for Erlang http://eproxus.github.com/meck
       {:meck, "0.8.4", only: :test}
     ]

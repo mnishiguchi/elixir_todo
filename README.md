@@ -8,9 +8,8 @@ This is a simple OTP application, with which I practice Elixir programming along
 
 ```elixir
 Todo.Application
-  └── Todo.Supervisor (rest_for_one) # The top-level supervisor.
-        ├── Todo.ProcessRegistry              # Dynamically register processes.
-        └── Todo.SystemRegistry (one_for_one) # The todo system.
+  └── Todo.Supervisor (one_for_one) # The top-level supervisor.
+        └── Todo.SystemSupervisor (one_for_one) # The todo system.
               ├── Todo.PoolSupervisor (one_for_one) # Start all the children from here.
               │     ├── Todo.DatabaseWorker 1
               │     ├── Todo.DatabaseWorker 2
@@ -33,12 +32,12 @@ Todo.Application
 $ iex -S mix
 
 # Only one instance per application is allowed.
-iex(1)> Application.start(:hello_world)
-{:error, {:already_started, :hello_world}}
-iex(2)> Application.stop(:hello_world)
+iex(1)> Application.start(:elixir_todo)
+{:error, {:already_started, :elixir_todo}}
+iex(2)> Application.stop(:elixir_todo)
 :ok
-17:04:42.874 [info]  Application hello_world exited: :stopped
-iex(3)> Application.start(:hello_world)
+17:04:42.874 [info]  Application elixir_todo exited: :stopped
+iex(3)> Application.start(:elixir_todo)
 :ok
 ```
 
@@ -57,13 +56,10 @@ length :erlang.processes
 Process.whereis(:todo_cache)
 Process.whereis(:todo_cache) |> Process.exit(:kill)
 
-Process.whereis(:process_registry)
-Process.whereis(:process_registry) |> Process.exit(:kill)
-
 ## Terminate an individual worker to see if it restarts correctly
 
-Todo.ProcessRegistry.whereis_name({:database_worker, 2})
-Todo.ProcessRegistry.whereis_name({:database_worker, 2}) |> Process.exit(:kill)
+:gproc.whereis_name({:n, :l, {:database_worker, 2}})
+:gproc.whereis_name({:n, :l, {:database_worker, 2}}) |> Process.exit(:kill)
 
 ## Continue to do some operations
 
@@ -81,4 +77,32 @@ Process.whereis(:todo_cache) |> Process.exit(:kill)
 ## Kill Todo.Database to see if it restarts correctly
 
 Process.whereis(:database_server) |> Process.exit(:kill)
+```
+
+---
+
+## Libraries
+
+### [gproc](https://github.com/uwiger/gproc)
+Extended process registry for Erlang
+
+```elixir
+def start_link(todo_list_name) do
+  GenServer.start_link __MODULE__,
+                       todo_list_name,  
+                       name: via_tuple(todo_list_name)  # Register in the gproc registry
+end
+
+defp via_tuple(todo_list_name) do
+  {
+    :via, :gproc, { :n,                            # type:  unique registration (:n)
+                    :l,                            # scope: local (:l)
+                    {:todo_server, todo_list_name} # complex alias
+                  }
+  }
+end
+
+def whereis(todo_list_name) do
+  :gproc.whereis_name {:n, :l, {:todo_server, todo_list_name}}
+end
 ```

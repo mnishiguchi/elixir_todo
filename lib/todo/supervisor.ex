@@ -35,13 +35,16 @@ defmodule Todo.Supervisor do
   Returns a supervisor specification that will be used by the supervisor process.
   """
   def init(_) do
+    db_folder = "./persist"
+
     # the descriptions of the child processes as a list of tuples
     children =  [
-                  worker(Todo.ProcessRegistry, []),
-                  supervisor(Todo.SystemSupervisor, []),
-                ] |> IO.inspect
+      supervisor(Todo.Database, [db_folder]),  # Specify that Todo.Database is a supervisor.
+      supervisor(Todo.ServerSupervisor, []),
+      worker(Todo.Cache, []),
+    ] |> IO.inspect
 
     # We use a :rest_for_one strategy, ensuring that a crash of the process registry takes down the entire system.
-    supervise(children, strategy: :rest_for_one)
+    supervise(children, strategy: :one_for_one)
   end
 end

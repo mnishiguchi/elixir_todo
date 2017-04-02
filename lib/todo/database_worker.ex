@@ -38,8 +38,8 @@ defmodule Todo.DatabaseWorker do
   defp via_tuple(worker_id) do
     {
       :via,
-      Todo.ProcessRegistry,          # A registry module
-      {:database_worker, worker_id}  # A complex alias
+      :gproc,
+      {:n, :l, {:database_worker, worker_id}} # A complex alias
     }
   end
 
